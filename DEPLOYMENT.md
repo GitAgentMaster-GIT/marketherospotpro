@@ -1,70 +1,36 @@
-# Deployment Guide (Render + Northflank)
+﻿# MarketHeroSpotPro Deployment Guide
 
-## Overview
-- Backend API on Render (Node.js service)
-- Frontend SPA on Northflank (Docker: Vite → nginx)
-- Domains: MarketHeroSpotPro.ai (primary), reserve MarketHeroSpotPro.com
+## Backend on Render
+- Create `api-markethero` Web Service from repo `GitAgentMaster-GIT/marketherospotpro`.
+- Build: `npm --prefix server install`; Start: `node server/index.js`.
+- Health check: `/api/health`; Auto-deploy: enabled.
+- Env vars:
+  - NODE_ENV=production
+  - PORT=10000 (Render default ok)
+  - MONGODB_URI=your Atlas URI
+  - JWT_SECRET=long random string
+  - JWT_EXPIRE=7d
+  - FRONTEND_URLS=https://marketherospotpro.ai,https://marketherospotpro.com,https://<northflank-app>.northflank.app
+  - OPENAI_API_KEY=optional
 
-## Prereqs
-- GitHub repo initialized and connected to both platforms
-- MongoDB Atlas URI
-- JWT secret
-- (Optional) OpenAI API key
+## Frontend on Northflank
+- Build from repo using Dockerfile (Vite) and `nginx.conf` for SPA.
+- Env var: VITE_API_URL=https://<render-service>.onrender.com
+- Attach domain `marketherospotpro.ai` (and `.com` later); enable SSL.
 
-## Backend (Render)
-1. Add `render.yaml` at repo root (already added).
-2. In Render, import repo → use blueprint or create Web Service:
-   - Start command: `node server/index.js`
-   - Env vars:
-     - `NODE_ENV=production`
-     - `MONGODB_URI=<atlas-uri>`
-     - `JWT_SECRET=<strong-secret>`
-     - `JWT_EXPIRE=7d`
-     - `FRONTEND_URLS=https://marketherospotpro.ai,https://marketherospotpro.com`
-     - `OPENAI_API_KEY` (optional)
-3. Deploy and verify:
-   - `GET https://<api-domain>/api/health`
-   - `GET https://<api-domain>/api/ready`
+## Admin Seeding (Production)
+- Render Shell: run `node server/scripts/seed-admin.js` with env set.
+- Admin email: marketherospotpro@gmail.com; note generated password or set one.
 
-## Frontend (Northflank)
-1. Build container using provided `Dockerfile` and `nginx.conf`.
-2. Set environment variables:
-   - `VITE_API_URL=https://<api-domain>/api`
-3. Expose port 80 and enable SSL.
-4. Map domain `MarketHeroSpotPro.ai`.
+## CORS & URLs
+- Backend reads `FRONTEND_URLS` (comma list) and enforces CORS.
+- Update with Northflank default domain, then replace with custom domains post-DNS.
 
-## DNS & SSL
-- Add DNS records in registrar per Northflank + Render docs.
-- Issue SSL certs (Let’s Encrypt) on both services.
+## Smoke Tests
+- Backend: GET /api/health; POST /api/auth/register; POST /api/auth/login; GET /api/me.
+- Frontend: login/register; protected routes; create campaign; list leads; AI generation (fallback if no key).
 
-## Admin Seeding
-Run once after backend is live:
-```
-ADMIN_EMAIL=marketherospotpro@gmail.com ADMIN_NAME="MarketHeroSpotPro Admin" ADMIN_PASSWORD="MarketHero123!" node server/scripts/seed-admin.js
-```
-
-## CORS
-Backend uses robust CORS. Configure allowed origins via:
-- `FRONTEND_URL=https://marketherospotpro.ai`
-- or `FRONTEND_URLS=https://marketherospotpro.ai,https://marketherospotpro.com`
-
-## Health Checks
-- `/api/health` returns service state
-- `/api/ready` confirms DB connectivity
-
-## Notes
-- Keep AI fallback enabled until OpenAI key is provided.
-- Add Terms/Privacy pages and link in footer.
-- Confirm MongoDB Atlas backups and alerts.
-
----
-
-## Quick Commands
-```
-# Local seed
-cd server; $env:ADMIN_EMAIL="marketherospotpro@gmail.com"; $env:ADMIN_NAME="MarketHeroSpotPro Admin"; $env:ADMIN_PASSWORD="MarketHero123!"; node scripts/seed-admin.js
-
-# Local start
-cd server; node index.js
-cd ..; npx vite
-```
+## Troubleshooting
+- 401s: confirm `VITE_API_URL` and JWT stored; check axios interceptor.
+- CORS: ensure `FRONTEND_URLS` matches exact origins (scheme + host + optional port).
+- DB: verify `MONGODB_URI` connectivity; check Render logs.
