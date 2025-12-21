@@ -34,3 +34,20 @@
 - 401s: confirm `VITE_API_URL` and JWT stored; check axios interceptor.
 - CORS: ensure `FRONTEND_URLS` matches exact origins (scheme + host + optional port).
 - DB: verify `MONGODB_URI` connectivity; check Render logs.
+## Frontend on Render (Docker)
+- Create Web Service: select repo and choose Docker.
+- Dockerfile path: `/Dockerfile` (root).
+- Build args:
+  - `VITE_API_URL` = `https://<api-markethero>.onrender.com`
+- Runtime envs: none needed for SPA.
+- After deploy, copy the frontend URL (e.g., `https://frontend-markethero.onrender.com`).
+
+### CORS update on backend
+- Render  `api-markethero`  Environment  set `FRONTEND_URLS`:
+  - `https://<frontend-markethero>.onrender.com,https://marketherospotpro.ai,https://marketherospotpro.com`
+- Restart service.
+
+### Attach domain + SSL
+- Render  frontend service  Custom Domains  add `marketherospotpro.ai` (and `www` if desired).
+- Render shows CNAME target; add in DNS provider.
+- Wait for validation  SSL becomes Active.
